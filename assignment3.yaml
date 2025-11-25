@@ -1,0 +1,56 @@
+---
+- name: Configure NTP, Logging, Timezone, and Role-Based Banners
+  hosts: routers
+  gather_facts: no
+
+  tasks:
+    - name: Configure NTP servers
+      ios_config:
+        lines:
+          - "ntp server {{ ntp_server }}"
+          - "ntp server {{ ntp_ip }}"
+
+    - name: Configure logging settings
+      ios_config:
+        lines:
+          - logging buffered 16384
+          - logging console warnings
+
+    - name: Configure timezone
+      ios_config:
+        lines:
+          - "clock timezone {{ timezone }}"
+
+    - name: Configure CORE router banner
+      ios_command:
+        commands:
+          - "configure terminal"
+          - "banner login ^C*** CORE ROUTER - Authorized Access Only ***^C"
+          - "end"
+      when: "'core' in group_names"
+
+    - name: Configure DISTRIBUTION router banner
+      ios_command:
+        commands:
+          - "configure terminal"
+          - "banner login ^C*** DISTRIBUTION ROUTER - Authorized Access Only ***^C"
+          - "end"
+      when: "'distribution' in group_names"
+
+    - name: Verify banner configuration
+      ios_command:
+        commands:
+          - "show running-config | include banner"
+      register: banner_output
+
+    - name: Verify NTP configuration
+      ios_command:
+        commands:
+          - "show running-config | include ntp"
+      register: ntp_output
+
+    - name: Debug output
+      debug:
+        msg:
+          - "Banner output: {{ banner_output.stdout_lines }}"
+          - "NTP output: {{ ntp_output.stdout_lines }}"
